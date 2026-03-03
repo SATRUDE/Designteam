@@ -30,6 +30,9 @@ export default function Home() {
   const [selectorError, setSelectorError] = useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [modalScreenshot, setModalScreenshot] = useState<ScreenshotResult | null>(null);
+  const [slices, setSlices] = useState<string[] | null>(null);
+  const [sliceLoading, setSliceLoading] = useState(false);
+  const [sliceMessage, setSliceMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (screenshots.length === 0) {
@@ -102,20 +105,64 @@ export default function Home() {
     setSelected(new Set());
   }
 
-  function downloadImage(imageBase64: string, pageUrl: string) {
+  function downloadImage(
+    imageBase64: string,
+    pageUrl: string,
+    customFilename?: string
+  ) {
     const link = document.createElement("a");
     link.href = `data:image/png;base64,${imageBase64}`;
-    try {
-      const url = new URL(pageUrl);
-      const name =
-        url.hostname.replace(/\./g, "-") +
-        (url.pathname === "/" ? "" : url.pathname.replace(/\//g, "-").slice(0, 40)) +
-        ".png";
-      link.download = name;
-    } catch {
-      link.download = "screenshot.png";
+    if (customFilename) {
+      link.download = customFilename;
+    } else {
+      try {
+        const url = new URL(pageUrl);
+        link.download =
+          url.hostname.replace(/\./g, "-") +
+          (url.pathname === "/" ? "" : url.pathname.replace(/\//g, "-").slice(0, 40)) +
+          ".png";
+      } catch {
+        link.download = "screenshot.png";
+      }
     }
     link.click();
+  }
+
+  async function sliceImageForFigma(
+    base64: string,
+    maxHeight = 4096
+  ): Promise<string[]> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        if (h <= maxHeight) {
+          resolve([base64]);
+          return;
+        }
+        const slices: string[] = [];
+        let y = 0;
+        while (y < h) {
+          const sliceH = Math.min(maxHeight, h - y);
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = sliceH;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            reject(new Error("Canvas context unavailable"));
+            return;
+          }
+          ctx.drawImage(img, 0, y, w, sliceH, 0, 0, w, sliceH);
+          const dataUrl = canvas.toDataURL("image/png");
+          slices.push(dataUrl.replace(/^data:image\/png;base64,/, ""));
+          y += sliceH;
+        }
+        resolve(slices);
+      };
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = `data:image/png;base64,${base64}`;
+    });
   }
 
   async function copyImage(imageBase64: string, pageUrl: string) {
@@ -511,7 +558,11 @@ export default function Home() {
         {modalScreenshot && modalScreenshot.imageBase64 && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-            onClick={() => setModalScreenshot(null)}
+            onClick={() => {
+              setModalScreenshot(null);
+              setSlices(null);
+              setSliceMessage(null);
+            }}
           >
             <div
               className="bg-white dark:bg-zinc-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col"
@@ -527,27 +578,74 @@ export default function Home() {
                   {modalScreenshot.url}
                 </a>
                 <div className="flex items-center gap-2 shrink-0">
+                  {slices === null ? (
+                    <>
+                      <button
+                        type="button"
+                        disabled={sliceLoading}
+                        onClick={async () => {
+                          setSliceLoading(true);
+                          setSlices(null);
+                          setSliceMessage(null);
+                          try {
+                            const result = await sliceImageForFigma(
+                              modalScreenshot.imageBase64!
+                            );
+                            if (result.length > 1) setSlices(result);
+                            else {
+                              setSliceMessage(
+                                "Image is already under Figma's 4096px limit"
+                              );
+                              setTimeout(() => setSliceMessage(null), 4000);
+                            }
+                          } catch {
+                            setSliceMessage("Failed to slice image");
+                            setTimeout(() => setSliceMessage(null), 4000);
+                          } finally {
+                            setSliceLoading(false);
+                          }
+                        }}
+                        className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-700 disabled:opacity-50"
+                      >
+                        {sliceLoading ? "Slicing…" : "Slice for Figma"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          downloadImage(
+                            modalScreenshot.imageBase64!,
+                            modalScreenshot.url
+                          )
+                        }
+                        className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-700"
+                      >
+                        Download
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          copyImage(
+                            modalScreenshot.imageBase64!,
+                            modalScreenshot.url
+                          )
+                        }
+                        className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
+                          copiedUrl === modalScreenshot.url
+                            ? "border-green-500 dark:border-green-600 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                            : "border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700"
+                        }`}
+                      >
+                        {copiedUrl === modalScreenshot.url ? "Copied!" : "Copy"}
+                      </button>
+                    </>
+                  ) : null}
                   <button
                     type="button"
-                    onClick={() => downloadImage(modalScreenshot.imageBase64!, modalScreenshot.url)}
-                    className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-700"
-                  >
-                    Download
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => copyImage(modalScreenshot.imageBase64!, modalScreenshot.url)}
-                    className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
-                      copiedUrl === modalScreenshot.url
-                        ? "border-green-500 dark:border-green-600 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400"
-                        : "border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700"
-                    }`}
-                  >
-                    {copiedUrl === modalScreenshot.url ? "Copied!" : "Copy"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setModalScreenshot(null)}
+                    onClick={() => {
+                      setModalScreenshot(null);
+                      setSlices(null);
+                      setSliceMessage(null);
+                    }}
                     className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-700"
                     aria-label="Close"
                   >
@@ -555,12 +653,84 @@ export default function Home() {
                   </button>
                 </div>
               </div>
+              {sliceMessage && (
+                <p className="px-3 py-2 text-sm text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-700/50 border-b border-zinc-200 dark:border-zinc-700">
+                  {sliceMessage}
+                </p>
+              )}
               <div className="overflow-y-auto max-h-[85vh] p-2">
-                <img
-                  src={`data:image/png;base64,${modalScreenshot.imageBase64}`}
-                  alt={modalScreenshot.url}
-                  className="w-full h-auto block"
-                />
+                {slices === null ? (
+                  <img
+                    src={`data:image/png;base64,${modalScreenshot.imageBase64}`}
+                    alt={modalScreenshot.url}
+                    className="w-full h-auto block"
+                  />
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                      Sliced into {slices.length} parts (max 4096px height each).
+                      Copy or download each for Figma.
+                    </p>
+                    <div className="space-y-3">
+                      {slices.map((sliceBase64, idx) => {
+                        const sliceId = `${modalScreenshot.url}-slice-${idx}`;
+                        let baseFilename = "screenshot";
+                        try {
+                          const u = new URL(modalScreenshot.url);
+                          baseFilename = u.hostname.replace(/\./g, "-");
+                        } catch {
+                          // keep default
+                        }
+                        const filename = `${baseFilename}-slice-${idx + 1}.png`;
+                        return (
+                          <div
+                            key={idx}
+                            className="rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden bg-zinc-50 dark:bg-zinc-900"
+                          >
+                            <div className="p-2 flex items-center justify-between gap-2 border-b border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800">
+                              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                Slice {idx + 1} of {slices.length}
+                              </span>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    downloadImage(
+                                      sliceBase64,
+                                      modalScreenshot.url,
+                                      filename
+                                    )
+                                  }
+                                  className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-700"
+                                >
+                                  Download
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => copyImage(sliceBase64, sliceId)}
+                                  className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
+                                    copiedUrl === sliceId
+                                      ? "border-green-500 dark:border-green-600 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                                      : "border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700"
+                                  }`}
+                                >
+                                  {copiedUrl === sliceId ? "Copied!" : "Copy"}
+                                </button>
+                              </div>
+                            </div>
+                            <div className="max-h-48 overflow-hidden">
+                              <img
+                                src={`data:image/png;base64,${sliceBase64}`}
+                                alt={`Slice ${idx + 1}`}
+                                className="w-full h-auto block"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

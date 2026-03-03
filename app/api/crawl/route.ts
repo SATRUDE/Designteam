@@ -78,6 +78,13 @@ export async function POST(request: Request) {
     const seen = new Set<string>();
     const links: { url: string; label?: string }[] = [];
 
+    // Include the crawled URL (homepage) first so it appears in the list
+    const startUrl = normalizeUrl(trimmed, baseOrigin) ?? trimmed;
+    if (startUrl && !seen.has(startUrl)) {
+      seen.add(startUrl);
+      links.push({ url: startUrl, label: "Homepage" });
+    }
+
     $("a[href]").each((_, el) => {
       const href = $(el).attr("href");
       if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;

@@ -29,6 +29,7 @@ export default function Home() {
   const [selectorResolving, setSelectorResolving] = useState(false);
   const [selectorError, setSelectorError] = useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+  const [modalScreenshot, setModalScreenshot] = useState<ScreenshotResult | null>(null);
 
   useEffect(() => {
     if (screenshots.length === 0) {
@@ -334,11 +335,20 @@ export default function Home() {
                   className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 overflow-hidden shadow-sm"
                 >
                   {item.imageBase64 ? (
-                    <img
-                      src={`data:image/png;base64,${item.imageBase64}`}
-                      alt={item.url}
-                      className="w-full h-auto block"
-                    />
+                    <div
+                      className="h-48 overflow-hidden cursor-pointer bg-zinc-100 dark:bg-zinc-900"
+                      onClick={() => setModalScreenshot(item)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === "Enter" && setModalScreenshot(item)}
+                      aria-label="View full screenshot"
+                    >
+                      <img
+                        src={`data:image/png;base64,${item.imageBase64}`}
+                        alt={item.url}
+                        className="w-full h-full object-cover object-top"
+                      />
+                    </div>
                   ) : (
                     <div className="aspect-video flex items-center justify-center bg-zinc-200 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400 text-sm p-4">
                       {item.error ?? "Failed"}
@@ -492,6 +502,65 @@ export default function Home() {
                 >
                   Take screenshots
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Full-page screenshot modal */}
+        {modalScreenshot && modalScreenshot.imageBase64 && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+            onClick={() => setModalScreenshot(null)}
+          >
+            <div
+              className="bg-white dark:bg-zinc-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-2 p-3 border-b border-zinc-200 dark:border-zinc-700 shrink-0">
+                <a
+                  href={modalScreenshot.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-zinc-600 dark:text-zinc-400 hover:underline truncate min-w-0"
+                >
+                  {modalScreenshot.url}
+                </a>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => downloadImage(modalScreenshot.imageBase64!, modalScreenshot.url)}
+                    className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-700"
+                  >
+                    Download
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => copyImage(modalScreenshot.imageBase64!, modalScreenshot.url)}
+                    className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
+                      copiedUrl === modalScreenshot.url
+                        ? "border-green-500 dark:border-green-600 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                        : "border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-700"
+                    }`}
+                  >
+                    {copiedUrl === modalScreenshot.url ? "Copied!" : "Copy"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModalScreenshot(null)}
+                    className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-1.5 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-700"
+                    aria-label="Close"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+              <div className="overflow-y-auto max-h-[85vh] p-2">
+                <img
+                  src={`data:image/png;base64,${modalScreenshot.imageBase64}`}
+                  alt={modalScreenshot.url}
+                  className="w-full h-auto block"
+                />
               </div>
             </div>
           </div>

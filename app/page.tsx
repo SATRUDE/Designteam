@@ -232,7 +232,7 @@ export default function Home() {
           </h2>
           <form onSubmit={handleCrawl} className="flex gap-3 flex-wrap">
             <input
-              type="url"
+              type="text"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://example.com"
@@ -393,7 +393,7 @@ export default function Home() {
 
             <div className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 p-4">
               <h2 className="text-lg font-medium text-zinc-700 dark:text-zinc-300 mb-3">
-                Top 5 colours across the site
+                Top 10 colours across the site
                 <span className="text-sm font-normal text-zinc-500 dark:text-zinc-400 ml-2">
                   (from headers, buttons, links and UI only — no images)
                 </span>

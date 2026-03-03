@@ -14,6 +14,25 @@ function isValidUrl(input: string): boolean {
   }
 }
 
+function normalizeUrlInput(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed) return trimmed;
+  let result = trimmed;
+  if (!/^https?:\/\//i.test(result)) {
+    result = "https://" + result;
+  }
+  try {
+    const u = new URL(result);
+    const parts = u.hostname.split(".");
+    if (parts.length === 2 && !u.hostname.startsWith("www.")) {
+      result = result.replace(u.origin, `${u.protocol}//www.${u.hostname}`);
+    }
+  } catch {
+    // leave as is; validation will catch invalid URLs
+  }
+  return result;
+}
+
 function normalizeUrl(href: string, base: string): string | null {
   try {
     const url = new URL(href, base);
@@ -38,18 +57,19 @@ export async function POST(request: Request) {
     }
 
     const trimmed = inputUrl.trim();
-    if (!isValidUrl(trimmed)) {
+    const normalized = normalizeUrlInput(trimmed);
+    if (!isValidUrl(normalized)) {
       return NextResponse.json(
         { error: "Invalid URL. Use http or https." },
         { status: 400 }
       );
     }
 
-    const baseUrl = new URL(trimmed);
+    const baseUrl = new URL(normalized);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
-    const res = await fetch(trimmed, {
+    const res = await fetch(normalized, {
       signal: controller.signal,
       headers: { "User-Agent": USER_AGENT },
       redirect: "follow",
@@ -79,7 +99,7 @@ export async function POST(request: Request) {
     const links: { url: string; label?: string }[] = [];
 
     // Include the crawled URL (homepage) first so it appears in the list
-    const startUrl = normalizeUrl(trimmed, baseOrigin) ?? trimmed;
+    const startUrl = normalizeUrl(normalized, baseOrigin) ?? normalized;
     if (startUrl && !seen.has(startUrl)) {
       seen.add(startUrl);
       links.push({ url: startUrl, label: "Homepage" });

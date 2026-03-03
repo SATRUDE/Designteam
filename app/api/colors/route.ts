@@ -70,7 +70,7 @@ function computedColorToHex(computed: string): string | null {
 
 function extractBrandColorsInPage(): string[] {
   const selectors =
-    "h1, h2, h3, h4, h5, h6, button, [role='button'], input[type='submit'], input[type='button'], a, header, nav, [class*='header'], [class*='nav'], [class*='menu'], [class*='btn'], [class*='button'], [class*='primary'], [class*='brand'], [class*='logo'], [class*='title'], [class*='heading'], body, section, main, article, aside, [class*='section'], [class*='block'], [class*='container'], [class*='wrapper'], [class*='hero'], [class*='banner'], [class*='strip'], [class*='band'], [class*='background'], [class*='bg-'], [class*='card'], [class*='panel'], [class*='content'], [class*='area'], [class*='zone']";
+    "h1, h2, h3, h4, h5, h6, button, [role='button'], input[type='submit'], input[type='button'], a, header, nav, [class*='header'], [class*='nav'], [class*='menu'], [class*='btn'], [class*='button'], [class*='primary'], [class*='brand'], [class*='logo'], [class*='title'], [class*='heading'], body, section, main, article, aside, div, [class*='section'], [class*='block'], [class*='container'], [class*='wrapper'], [class*='hero'], [class*='banner'], [class*='strip'], [class*='band'], [class*='background'], [class*='bg-'], [class*='card'], [class*='panel'], [class*='content'], [class*='area'], [class*='zone'], [class*='color']";
   const elements = document.querySelectorAll(selectors);
   const colors: string[] = [];
   const seen = new Set<string>();
@@ -153,12 +153,12 @@ export async function POST(request: Request) {
       await browser.close();
     }
 
-    const top5 = [...allCounts.entries()]
+    const topColors = [...allCounts.entries()]
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
+      .slice(0, 10)
       .map(([hex]) => hex);
 
-    return NextResponse.json({ colors: top5 });
+    return NextResponse.json({ colors: topColors });
   } catch (err) {
     return NextResponse.json(
       {

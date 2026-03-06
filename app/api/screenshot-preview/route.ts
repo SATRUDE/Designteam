@@ -31,9 +31,10 @@ export async function POST(request: Request) {
       try {
         await page.setViewportSize(VIEWPORT);
         await page.goto(url, {
-          waitUntil: "domcontentloaded",
+          waitUntil: "load",
           timeout: NAVIGATION_TIMEOUT_MS,
         });
+        await page.waitForTimeout(1500);
         const buffer = await page.screenshot({
           type: "png",
           fullPage: false,

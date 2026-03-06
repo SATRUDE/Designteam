@@ -33,9 +33,10 @@ export async function POST(request: Request) {
       try {
         await page.setViewportSize(VIEWPORT);
         await page.goto(url, {
-          waitUntil: "domcontentloaded",
+          waitUntil: "load",
           timeout: NAVIGATION_TIMEOUT_MS,
         });
+        await page.waitForTimeout(1500);
         const selector = await page.evaluate(({ x, y }) => {
           const el = document.elementFromPoint(x, y);
           if (!el || el === document.body) return null;

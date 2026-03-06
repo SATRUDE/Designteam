@@ -16,20 +16,10 @@ function isValidUrl(input: string): boolean {
 function normalizeUrlInput(input: string): string {
   const trimmed = input.trim();
   if (!trimmed) return trimmed;
-  let result = trimmed;
-  if (!/^https?:\/\//i.test(result)) {
-    result = "https://" + result;
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return "https://" + trimmed;
   }
-  try {
-    const u = new URL(result);
-    const parts = u.hostname.split(".");
-    if (parts.length === 2 && !u.hostname.startsWith("www.")) {
-      result = result.replace(u.origin, `${u.protocol}//www.${u.hostname}`);
-    }
-  } catch {
-    // leave as is; validation will catch invalid URLs
-  }
-  return result;
+  return trimmed;
 }
 
 export async function POST(request: Request) {

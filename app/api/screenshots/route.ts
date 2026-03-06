@@ -64,7 +64,8 @@ export async function POST(request: Request) {
           });
           if (cookieSelector) {
             try {
-              await page.click(cookieSelector, { timeout: 3000 });
+              await page.waitForTimeout(1000);
+              await page.click(cookieSelector, { timeout: 5000 });
               await page.waitForTimeout(500);
             } catch {
               // ignore – take screenshot anyway

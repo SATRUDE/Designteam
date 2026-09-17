@@ -1,4 +1,4 @@
-import { chromium } from "playwright";
+import { launchBrowser } from "@/lib/browser";
 import { NextResponse } from "next/server";
 
 const MAX_URLS = 20;
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     }
 
     const results: { url: string; imageBase64?: string; error?: string }[] = [];
-    const browser = await chromium.launch({ headless: true });
+    const browser = await launchBrowser();
 
     try {
       for (const url of urls) {

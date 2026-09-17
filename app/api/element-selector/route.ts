@@ -1,4 +1,4 @@
-import { chromium } from "playwright";
+import { launchBrowser } from "@/lib/browser";
 import { NextResponse } from "next/server";
 
 const NAVIGATION_TIMEOUT_MS = 20000;
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const browser = await chromium.launch({ headless: true });
+    const browser = await launchBrowser();
     try {
       const page = await browser.newPage();
       try {
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
               path.unshift(part);
               break;
             }
-            const parent = current.parentElement;
+            const parent: Element | null = current.parentElement;
             const siblings = parent ? Array.from(parent.children).filter((c) => c.tagName === current!.tagName) : [];
             if (siblings.length > 1) {
               part += ":nth-of-type(" + (siblings.indexOf(current) + 1) + ")";

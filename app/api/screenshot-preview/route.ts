@@ -1,4 +1,4 @@
-import { chromium } from "playwright";
+import { launchBrowser } from "@/lib/browser";
 import { NextResponse } from "next/server";
 
 const NAVIGATION_TIMEOUT_MS = 30000;
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const browser = await chromium.launch({ headless: true });
+    const browser = await launchBrowser();
     try {
       const page = await browser.newPage();
       try {

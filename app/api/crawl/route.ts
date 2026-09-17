@@ -1,4 +1,4 @@
-import { chromium } from "playwright";
+import { launchBrowser } from "@/lib/browser";
 import { NextResponse } from "next/server";
 
 const NAVIGATION_TIMEOUT_MS = 20000;
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     const baseOrigin = baseUrl.origin;
     const baseHostname = baseUrl.hostname;
 
-    const browser = await chromium.launch({ headless: true });
+    const browser = await launchBrowser();
     let extracted: { url: string; label?: string }[] = [];
     try {
       const page = await browser.newPage();

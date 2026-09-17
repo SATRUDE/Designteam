@@ -1,0 +1,19 @@
+{
+  "functions": {
+    "app/api/crawl/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/screenshots/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/screenshot-preview/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/element-selector/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/colors/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}

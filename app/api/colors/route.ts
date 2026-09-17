@@ -1,4 +1,4 @@
-import { chromium } from "playwright";
+import { launchBrowser } from "@/lib/browser";
 import { NextResponse } from "next/server";
 
 const MAX_URLS = 20;
@@ -121,7 +121,7 @@ export async function POST(request: Request) {
     }
 
     const allCounts = new Map<string, number>();
-    const browser = await chromium.launch({ headless: true });
+    const browser = await launchBrowser();
 
     try {
       for (const pageUrl of urls) {

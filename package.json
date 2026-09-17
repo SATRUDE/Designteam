@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build:figma-plugin": "npm run build --prefix figma-plugin",
     "package:figma-plugin": "node scripts/package-figma-plugin.mjs",
-    "build": "npm install --prefix figma-plugin && npm run package:figma-plugin && next build",
+    "build": "npm install --prefix figma-plugin --include=dev && npm run package:figma-plugin && next build",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "node scripts/postinstall.mjs"

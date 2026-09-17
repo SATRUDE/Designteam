@@ -4,6 +4,32 @@ import { NextResponse } from "next/server";
 const NAVIGATION_TIMEOUT_MS = 20000;
 const VIEWPORT = { width: 1280, height: 720 };
 
+async function gotoWithRetry(
+  page: import("playwright-core").Page,
+  url: string,
+  timeoutMs: number
+) {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await page.goto(url, { waitUntil: "load", timeout: timeoutMs });
+      return;
+    } catch (err) {
+      lastErr = err;
+      try {
+        await page.goto(url, {
+          waitUntil: "domcontentloaded",
+          timeout: timeoutMs,
+        });
+        return;
+      } catch (err2) {
+        lastErr = err2;
+      }
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("Navigation failed");
+}
+
 function isValidUrl(input: string): boolean {
   try {
     const u = new URL(input);
@@ -53,10 +79,7 @@ export async function POST(request: Request) {
       const page = await browser.newPage();
       try {
         await page.setViewportSize(VIEWPORT);
-        await page.goto(normalized, {
-          waitUntil: "load",
-          timeout: NAVIGATION_TIMEOUT_MS,
-        });
+        await gotoWithRetry(page, normalized, NAVIGATION_TIMEOUT_MS);
         await page.waitForLoadState("networkidle").catch(() => {});
         await page.waitForTimeout(2000);
 

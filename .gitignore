@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+/figma-plugin/node_modules
+/figma-plugin/dist
 /.pnp
 .pnp.*
 .yarn/*
@@ -23,6 +25,7 @@
 # misc
 .DS_Store
 .npm-cache
+.data
 *.pem
 
 # debug
@@ -36,7 +39,10 @@ yarn-error.log*
 
 # vercel
 .vercel
-public/chromium-pack.tar
+
+# generated at build/install time, not source
+/public/chromium-pack.tar
+/public/designteam-figma-plugin.zip
 
 # typescript
 *.tsbuildinfo

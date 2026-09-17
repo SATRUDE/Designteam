@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body {
+        font: 12px/1.4 system-ui, sans-serif;
+        margin: 12px;
+        color: var(--figma-color-text, #333);
+      }
+      h1 {
+        font-size: 13px;
+        margin: 0 0 10px;
+      }
+      label {
+        display: block;
+        margin: 10px 0 4px;
+      }
+      input[type="file"] {
+        width: 100%;
+      }
+      textarea {
+        width: 100%;
+        box-sizing: border-box;
+        min-height: 120px;
+        font: 11px/1.3 ui-monospace, monospace;
+      }
+      button {
+        margin-top: 12px;
+        padding: 8px 14px;
+        cursor: pointer;
+      }
+      .hint {
+        margin-top: 8px;
+        opacity: 0.75;
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Designteam import</h1>
+    <label for="file">Import JSON file</label>
+    <input type="file" id="file" accept=".json,application/json" />
+    <label for="paste">Or paste JSON</label>
+    <textarea id="paste" placeholder='{"version":1,...}'></textarea>
+    <button type="button" id="run">Import to new page</button>
+    <p class="hint">Export JSON from the Designteam web app (Export for Figma plugin).</p>
+    <script src="ui.js"></script>
+  </body>
+</html>

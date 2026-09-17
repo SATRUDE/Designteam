@@ -14,6 +14,9 @@
     },
     "app/api/colors/route.ts": {
       "maxDuration": 60
+    },
+    "app/api/modules/route.ts": {
+      "maxDuration": 60
     }
   }
 }

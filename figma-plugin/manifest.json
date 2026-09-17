@@ -1,0 +1,8 @@
+{
+  "name": "Designteam Import",
+  "id": "com.designteam.import",
+  "api": "1.0.0",
+  "main": "dist/code.js",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page"
+}

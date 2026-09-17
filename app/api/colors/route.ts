@@ -4,6 +4,32 @@ import { NextResponse } from "next/server";
 const MAX_URLS = 20;
 const NAVIGATION_TIMEOUT_MS = 20000;
 
+async function gotoWithRetry(
+  page: import("playwright-core").Page,
+  url: string,
+  timeoutMs: number
+) {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await page.goto(url, { waitUntil: "load", timeout: timeoutMs });
+      return;
+    } catch (err) {
+      lastErr = err;
+      try {
+        await page.goto(url, {
+          waitUntil: "domcontentloaded",
+          timeout: timeoutMs,
+        });
+        return;
+      } catch (err2) {
+        lastErr = err2;
+      }
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("Navigation failed");
+}
+
 // Browser default colors (e.g. unstyled links) — exclude so we only show author-chosen brand colors
 const BROWSER_DEFAULT_COLORS = new Set([
   "#0000ee", // default unvisited link blue
@@ -127,10 +153,7 @@ export async function POST(request: Request) {
       for (const pageUrl of urls) {
         const page = await browser.newPage();
         try {
-          await page.goto(pageUrl, {
-            waitUntil: "domcontentloaded",
-            timeout: NAVIGATION_TIMEOUT_MS,
-          });
+          await gotoWithRetry(page, pageUrl, NAVIGATION_TIMEOUT_MS);
           const rawColors = await page.evaluate(extractBrandColorsInPage);
           for (const raw of rawColors) {
             const hex = computedColorToHex(raw);

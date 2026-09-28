@@ -54,6 +54,7 @@ export default function Home() {
   const [url, setUrl] = useState("");
   const [crawlLoading, setCrawlLoading] = useState(false);
   const [crawlError, setCrawlError] = useState<string | null>(null);
+  const [crawlWarnings, setCrawlWarnings] = useState<string[]>([]);
   const [links, setLinks] = useState<CrawlLink[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [screenshotLoading, setScreenshotLoading] = useState(false);
@@ -326,6 +327,7 @@ export default function Home() {
   async function handleCrawl(e: React.FormEvent) {
     e.preventDefault();
     setCrawlError(null);
+    setCrawlWarnings([]);
     setLinks([]);
     setSelected(new Set());
     setScreenshots([]);
@@ -340,6 +342,7 @@ export default function Home() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Crawl failed");
       setLinks(data.links ?? []);
+      setCrawlWarnings(Array.isArray(data.warnings) ? data.warnings : []);
     } catch (err) {
       setCrawlError(err instanceof Error ? err.message : "Crawl failed");
     } finally {
@@ -1328,95 +1331,98 @@ export default function Home() {
     setCaptureCompleted(0);
     setCaptureFailed(0);
     try {
-      const res = await fetch("/api/screenshots", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          urls: requestedUrls,
-          cookieSelector: withSelector || undefined,
-          modes,
-          ...(process.env.NEXT_PUBLIC_SCREENSHOT_NORMALIZE_FIXED === "false"
-            ? { normalizeFixedChrome: false }
-            : {}),
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "Screenshots failed");
-      }
-      if (!res.body) throw new Error("No screenshot stream returned");
+      let completedFailures = 0;
+      for (let offset = 0; offset < requestedUrls.length; offset += 20) {
+        const res = await fetch("/api/screenshots", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            urls: requestedUrls.slice(offset, offset + 20),
+            cookieSelector: withSelector || undefined,
+            modes,
+            ...(process.env.NEXT_PUBLIC_SCREENSHOT_NORMALIZE_FIXED === "false"
+              ? { normalizeFixedChrome: false }
+              : {}),
+          }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error ?? "Screenshots failed");
+        }
+        if (!res.body) throw new Error("No screenshot stream returned");
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let pending = "";
-      let streamDone = false;
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let pending = "";
+        let streamDone = false;
 
-      while (!streamDone) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        pending += decoder.decode(value, { stream: true });
-        const frames = pending.split("\n\n");
-        pending = frames.pop() ?? "";
+        while (!streamDone) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          pending += decoder.decode(value, { stream: true });
+          const frames = pending.split("\n\n");
+          pending = frames.pop() ?? "";
 
-        for (const frame of frames) {
-          const lines = frame
-            .split("\n")
-            .map((line) => line.trim())
-            .filter(Boolean);
-          if (!lines.length) continue;
-          const eventLine = lines.find((line) => line.startsWith("event: "));
-          const dataLine = lines.find((line) => line.startsWith("data: "));
-          if (!eventLine || !dataLine) continue;
+          for (const frame of frames) {
+            const lines = frame
+              .split("\n")
+              .map((line) => line.trim())
+              .filter(Boolean);
+            if (!lines.length) continue;
+            const eventLine = lines.find((line) => line.startsWith("event: "));
+            const dataLine = lines.find((line) => line.startsWith("data: "));
+            if (!eventLine || !dataLine) continue;
 
-          const eventName = eventLine.slice(7).trim();
-          let payload: unknown;
-          try {
-            payload = JSON.parse(dataLine.slice(6));
-          } catch {
-            continue;
-          }
+            const eventName = eventLine.slice(7).trim();
+            let payload: unknown;
+            try {
+              payload = JSON.parse(dataLine.slice(6));
+            } catch {
+              continue;
+            }
 
-          if (eventName === "screenshot") {
-            const item = payload as ScreenshotResult;
-            setScreenshots((prev) => {
-              const existing = prev.findIndex((s) => s.url === item.url);
-              if (existing >= 0) {
-                const next = [...prev];
-                next[existing] = item;
+            if (eventName === "screenshot") {
+              const item = payload as ScreenshotResult;
+              setScreenshots((prev) => {
+                const existing = prev.findIndex((s) => s.url === item.url);
+                if (existing >= 0) {
+                  const next = [...prev];
+                  next[existing] = item;
+                  return next;
+                }
+                const next = [...prev, item];
+                next.sort(
+                  (a, b) =>
+                    requestedUrls.indexOf(a.url) - requestedUrls.indexOf(b.url)
+                );
                 return next;
-              }
-              const next = [...prev, item];
-              next.sort(
-                (a, b) =>
-                  requestedUrls.indexOf(a.url) - requestedUrls.indexOf(b.url)
-              );
-              return next;
-            });
-            continue;
-          }
+              });
+              continue;
+            }
 
-          if (eventName === "progress") {
-            const progress = payload as ScreenshotStreamProgress;
-            setCaptureTotal(progress.total);
-            setCaptureCompleted(progress.completed);
-            setCaptureFailed(progress.failed);
-            continue;
-          }
+            if (eventName === "progress") {
+              const progress = payload as ScreenshotStreamProgress;
+              setCaptureCompleted(offset + progress.completed);
+              setCaptureFailed(completedFailures + progress.failed);
+              continue;
+            }
 
-          if (eventName === "error") {
-            const errorPayload = payload as { error?: string };
-            throw new Error(errorPayload.error ?? "Screenshots failed");
-          }
+            if (eventName === "error") {
+              const errorPayload = payload as { error?: string };
+              throw new Error(errorPayload.error ?? "Screenshots failed");
+            }
 
-          if (eventName === "done") {
-            const donePayload = payload as ScreenshotStreamProgress;
-            setCaptureTotal(donePayload.total);
-            setCaptureCompleted(donePayload.completed);
-            setCaptureFailed(donePayload.failed);
-            streamDone = true;
-            break;
+            if (eventName === "done") {
+              const donePayload = payload as ScreenshotStreamProgress;
+              completedFailures += donePayload.failed;
+              setCaptureCompleted(offset + donePayload.completed);
+              setCaptureFailed(completedFailures);
+              streamDone = true;
+              break;
+            }
           }
         }
+        if (!streamDone) throw new Error("Capture connection ended before the batch finished. Completed screenshots are preserved.");
       }
     } catch (err) {
       setScreenshotError(
@@ -1428,7 +1434,11 @@ export default function Home() {
   }
 
   async function handleScreenshots() {
-    openCookieModal();
+    if (selected.size === 0) return;
+    setPendingUrls(Array.from(selected));
+    setPendingCookieSelector(undefined);
+    setScreenshotError(null);
+    openViewportModal();
   }
 
   function openViewportModal() {
@@ -1856,6 +1866,11 @@ export default function Home() {
               {crawlError}
             </p>
           )}
+          {crawlWarnings.length > 0 && (
+            <ul className="mt-2 space-y-1 text-sm text-amber-800" aria-label="Page discovery warnings">
+              {crawlWarnings.map((warning, index) => <li key={index}>{warning}</li>)}
+            </ul>
+          )}
         </section>
 
         {/* Step 2: Link list and selection */}
@@ -1864,7 +1879,7 @@ export default function Home() {
             <h2 className="text-lg font-medium text-zinc-700 dark:text-zinc-300 mb-3">
               Step 2: Select pages to screenshot
             </h2>
-            <div className="flex gap-2 mb-3">
+            <div className="flex flex-wrap gap-2 mb-3">
               <button
                 type="button"
                 onClick={selectAll}
@@ -1901,7 +1916,16 @@ export default function Home() {
                   `Take screenshots (${selected.size})`
                 )}
               </button>
+              <button
+                type="button"
+                onClick={openCookieModal}
+                disabled={selected.size === 0 || screenshotLoading}
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm hover:bg-zinc-50 disabled:opacity-50"
+              >
+                Cookie override
+              </button>
             </div>
+            <p className="mb-3 text-sm text-zinc-600">Common cookie banners are dismissed automatically. Use Cookie override if a site needs help.</p>
             <ul className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 divide-y divide-zinc-200 dark:divide-zinc-700 max-h-80 overflow-y-auto">
               {links.map((link) => (
                 <li key={link.url} className="flex items-center gap-3 px-4 py-2">
@@ -2009,6 +2033,7 @@ export default function Home() {
                     </div>
                   )}
                   <div className="p-3 border-t border-zinc-200 dark:border-zinc-700 flex flex-col gap-2">
+                    {primaryImage && item.error && <p className="text-sm text-amber-800">{item.error}</p>}
                     <a
                       href={item.url}
                       target="_blank"
@@ -2307,10 +2332,10 @@ export default function Home() {
               onClick={(e) => e.stopPropagation()}
             >
               <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
-                Select cookie consent button (optional)
+                Override automatic cookie dismissal
               </h2>
               <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
-                Click on the cookie/consent button in the preview below. We will click it on each page before taking screenshots. Or skip to take screenshots without dismissing the banner.
+                Click the consent button in the preview, or enter its selector. We will use it on each selected page instead of automatic detection.
               </p>
               <div className="mb-4">
                 {previewLoading ? (
@@ -2368,7 +2393,7 @@ export default function Home() {
                   }}
                   className="rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700"
                 >
-                  Skip
+                  Use automatic detection
                 </button>
                 <button
                   type="button"

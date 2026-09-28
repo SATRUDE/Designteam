@@ -7,6 +7,7 @@ export interface CrawlLink {
 
 export interface CrawlResult {
   links: CrawlLink[];
+  warnings?: string[];
 }
 
 export function crawlPage(browser: Browser, url: string): Promise<CrawlResult>;

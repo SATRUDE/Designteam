@@ -1,7 +1,9 @@
 {
   "name": "designteam",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Discover website pages and capture Figma-ready screenshots with a local CLI and optional review dashboard.",
-  "author": { "name": "Mark Diffey" },
+  "author": {
+    "name": "Mark Diffey"
+  },
   "repository": "https://github.com/SATRUDE/Designteam"
 }

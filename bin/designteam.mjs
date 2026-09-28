@@ -9,7 +9,7 @@ const HELP = `designteam — capture websites and prepare Figma-ready images
 
   designteam capture <url...> [--modes desktop,mobile] [--out <new-directory>]
                      [--cookie <selector>] [--no-normalize] [--max-tile <101–4096>]
-  designteam crawl <url>                 Discover links on one page (JSON stdout)
+  designteam crawl <url>                 Discover sitemap pages and links (JSON stdout)
   designteam dashboard <manifest.json> [--port <number>]
                                         Review an existing capture locally
   designteam install-browser            Download Chromium for this tool
@@ -19,6 +19,7 @@ Runs from any folder. Capture writes into the caller's folder by default.
 Capture stdout is the manifest path; diagnostics go to stderr.
 Exit codes: 0 success, 1 invalid input/failed run, 2 partially captured run.
 The review dashboard starts only when requested and binds to 127.0.0.1.
+Common cookie banners are dismissed automatically; --cookie overrides detection.
 `;
 
 async function main() {

@@ -53,10 +53,16 @@ npx --yes github:SATRUDE/Designteam#main capture https://example.com https://exa
 
 Quote URLs that contain query strings, for example `"https://example.com/?page=2"`.
 
-### 4. Remove a cookie banner when needed
+### 4. Cookie banners are handled automatically
 
-Cookie banners are not removed automatically. Supply the CSS selector of the
-button that dismisses the banner:
+Designteam detects and dismisses common cookie banners before capture, including
+recognisable consent dialogs, open shadow DOM and consent iframes. It prefers
+rejecting optional cookies where that choice is available. No extra command is
+needed for supported banners.
+
+If a detected banner cannot be dismissed, that capture fails with an explanation.
+For a site needing special handling, override detection with the CSS selector of
+the dismissal button:
 
 ```sh
 npx --yes github:SATRUDE/Designteam#main capture https://example.com --cookie '#accept-cookies' --out ./shots/example-clean
@@ -66,7 +72,8 @@ npx --yes github:SATRUDE/Designteam#main capture https://example.com --cookie '#
 can find it with your browser's Inspect tool, or ask your coding assistant to find
 it. Every page in that command must have a working matching button. If it cannot
 be clicked, that capture fails and the reason is recorded. Omit `--cookie` on
-pages without a banner; use separate commands for sites with different selectors.
+pages without a banner or to use automatic detection; use separate commands for
+sites with different manual selectors.
 
 ### 5. Review the images
 
@@ -89,9 +96,16 @@ page. Move the manifest and its PNGs together if you move a capture folder.
 npx --yes github:SATRUDE/Designteam#main crawl https://example.com
 ```
 
-This prints a JSON list of links discovered on that page. Choose the URLs you want
-and pass them to `capture`. It does not recursively crawl the whole website or
-capture the discovered pages automatically.
+This reads the site’s `robots.txt`, common sitemap paths and nested sitemap indexes,
+and combines their pages with links on the supplied page. It prints a deduplicated
+JSON list. You can also pass a direct sitemap XML or XML.gz URL. Choose the URLs
+you want and pass them to `capture`; discovery does not take screenshots.
+
+If there is no sitemap, links on the supplied page are still returned. Discovery is
+bounded to 2,000 sitemap pages, 20 sitemap documents and six seconds, with size and
+request limits too. Incomplete discovery is reported in `warnings`, including in
+the web app, so check them before treating the list as complete. CLI capture takes
+up to 20 URLs per command; the web app splits larger selections into batches.
 
 ## Use with Claude Code
 
@@ -161,8 +175,9 @@ For the Figma import workflow:
 - **Could not launch Chromium:** repeat the `install-browser` command from step 2.
 - **Output folder already exists / EEXIST:** choose a new `--out` folder. Existing
   captures are never overwritten.
-- **Cookie dismissal failed:** check the selector against the actual page. Do not
-  omit it just to hide the error if a banner is still covering the page.
+- **Cookie dismissal failed:** a detected banner could not be dismissed. Supply
+  the correct `--cookie` selector, or use **Cookie override** in the web app. If you
+  already supplied a selector, check it against that page.
 - **Some pages failed:** successful captures are retained. Check the manifest's
   `warnings` and retry failed URLs in a new folder. Exit codes are 0 for complete
   success, 1 for invalid input or total failure, and 2 for partial capture.

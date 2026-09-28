@@ -7,9 +7,26 @@ import { crawlPage } from "../lib/core/crawl.mjs";
 let browser;
 let server;
 let origin;
+let sitemapEnabled = false;
 
 before(async () => {
   server = createServer((request, response) => {
+    if (request.url === "/direct-map.xml") {
+      response.end('<urlset><url><loc>/sitemap-only</loc></url></urlset>');
+      return;
+    }
+    if (sitemapEnabled && request.url === "/robots.txt") {
+      response.end(`Sitemap: ${origin}/custom-map.xml`);
+      return;
+    }
+    if (sitemapEnabled && request.url === "/custom-map.xml") {
+      response.end('<sitemapindex><sitemap><loc>/direct-map.xml</loc></sitemap><sitemap><loc>/missing-map.xml</loc></sitemap><sitemap><loc>/duplicate-map.xml</loc></sitemap></sitemapindex>');
+      return;
+    }
+    if (sitemapEnabled && request.url === "/duplicate-map.xml") {
+      response.end('<urlset><url><loc>/site/article#fragment</loc></url></urlset>');
+      return;
+    }
     if (request.url === "/slow-menu") {
       const timer = setTimeout(() => {
         response.writeHead(200, { "Content-Type": "application/json" });
@@ -147,4 +164,26 @@ test("closes the page when navigation fails", async () => {
   };
   await assert.rejects(crawlPage(failingBrowser, `${origin}/missing`), /Navigation failed/);
   assert.equal(closed, true);
+});
+
+
+test("combines rendered links with sitemap-only pages, preserves labels, and returns partial warnings", async () => {
+  sitemapEnabled = true;
+  try {
+    const result = await crawlPage(browser, `${origin}/with-base`);
+    assert.deepEqual(result.links, [
+      { url: `${origin}/with-base`, label: "Homepage" },
+      { url: `${origin}/site/article`, label: "Article" },
+      { url: `${origin}/absolute`, label: "Absolute" },
+      { url: `${origin}/sitemap-only` },
+    ]);
+    assert.ok(result.warnings.some((warning) => /missing-map.xml: HTTP 404/.test(warning)));
+  } finally {
+    sitemapEnabled = false;
+  }
+});
+
+test("accepts a direct sitemap URL without opening a browser page", async () => {
+  const result = await crawlPage({ newPage() { throw new Error("Unexpected browser navigation"); } }, `${origin}/direct-map.xml`);
+  assert.deepEqual(result, { links: [{ url: `${origin}/sitemap-only` }] });
 });

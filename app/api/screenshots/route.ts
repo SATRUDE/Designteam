@@ -103,17 +103,17 @@ export async function POST(request: Request) {
                 images[mode] = buffer.toString("base64");
                 anySuccess = true;
               } catch (err) {
-                lastError = err instanceof Error ? err.message : "Screenshot failed";
+                lastError = `${mode}: ${err instanceof Error ? err.message : "Screenshot failed"}`;
               }
             }
 
             const result: ScreenshotResult = {
               url,
               images: anySuccess ? images : undefined,
-              error: anySuccess ? undefined : lastError,
+              error: lastError,
             };
             completed += 1;
-            if (!anySuccess) failed += 1;
+            if (lastError) failed += 1;
             sendEvent("screenshot", result);
             sendProgress(completed, failed);
           }

@@ -6,34 +6,36 @@ PNG tiles, ready to place in Figma.
 
 ## Quick start
 
-### 1. Install the tool
+### 1. Install Node.js and Git
 
-Install **Node.js 22 or later** (including npm) and **Git**, then open a terminal:
-
-```sh
-npm install --global github:SATRUDE/Designteam#main
-designteam --version
-```
-
-The package is installed from GitHub. It is not published to the npm registry, so
-`npm install --global designteam` is not the installation command for this tool.
-
-### 2. Install the browser once
+Install **Node.js 22 or later** (including npm) and **Git**, then open a terminal.
+Check that both are available:
 
 ```sh
-designteam install-browser
+node --version
+git --version
 ```
 
-This downloads Chromium for screenshot capture. Installation does not start a
-server or capture anything. Run it again after updating the tool if it asks for a
-new browser version.
+The commands below run the tool directly from GitHub using `npx`, which comes
+with npm. No global installation is needed. The package is not published to the
+npm registry; use the full GitHub name shown in each command.
+
+### 2. Download the browser once
+
+```sh
+npx --yes github:SATRUDE/Designteam#main install-browser
+```
+
+The first run downloads the tool and its dependencies. `install-browser` downloads
+Chromium for screenshot capture. It does not start a server or capture anything.
+Run it again if a later version of the tool asks for a new browser version.
 
 ### 3. Take screenshots
 
 Run this from the folder where you want to save the images:
 
 ```sh
-designteam capture https://example.com --modes desktop,mobile --out ./shots/example
+npx --yes github:SATRUDE/Designteam#main capture https://example.com --modes desktop,mobile --out ./shots/example
 ```
 
 Replace `https://example.com` with the website you want. The output folder must
@@ -46,7 +48,7 @@ it does not need a Git repository or a running web app.
 - To capture several pages, list their URLs before the options (up to 20 per run):
 
 ```sh
-designteam capture https://example.com https://example.com/about --modes desktop,mobile --out ./shots/example-pages
+npx --yes github:SATRUDE/Designteam#main capture https://example.com https://example.com/about --modes desktop,mobile --out ./shots/example-pages
 ```
 
 Quote URLs that contain query strings, for example `"https://example.com/?page=2"`.
@@ -57,7 +59,7 @@ Cookie banners are not removed automatically. Supply the CSS selector of the
 button that dismisses the banner:
 
 ```sh
-designteam capture https://example.com --cookie '#accept-cookies' --out ./shots/example-clean
+npx --yes github:SATRUDE/Designteam#main capture https://example.com --cookie '#accept-cookies' --out ./shots/example-clean
 ```
 
 `#accept-cookies` is only an example: use the actual selector for that site. You
@@ -69,7 +71,7 @@ pages without a banner; use separate commands for sites with different selectors
 ### 5. Review the images
 
 ```sh
-designteam dashboard ./shots/example/manifest.json
+npx --yes github:SATRUDE/Designteam#main dashboard ./shots/example/manifest.json
 ```
 
 Open the local URL printed in the terminal. The viewer shows the screenshots and
@@ -84,25 +86,12 @@ page. Move the manifest and its PNGs together if you move a capture folder.
 ### 6. Discover more pages
 
 ```sh
-designteam crawl https://example.com
+npx --yes github:SATRUDE/Designteam#main crawl https://example.com
 ```
 
 This prints a JSON list of links discovered on that page. Choose the URLs you want
 and pass them to `capture`. It does not recursively crawl the whole website or
 capture the discovered pages automatically.
-
-## Use without a global installation
-
-Use these commands instead of installing the global `designteam` command:
-
-```sh
-npx --yes github:SATRUDE/Designteam#main install-browser
-npx --yes github:SATRUDE/Designteam#main capture https://example.com --out ./shots/example
-npx --yes github:SATRUDE/Designteam#main dashboard ./shots/example/manifest.json
-```
-
-The first run downloads the package and its dependencies. Chromium is a separate
-download through `install-browser`. Output still goes into your current folder.
 
 ## Use with Claude Code
 
@@ -167,9 +156,9 @@ For the Figma import workflow:
 
 ## Troubleshooting and limits
 
-- **Command not found:** open a new terminal after installing, or use the `npx`
-  commands above. `designteam --help` lists the commands and options.
-- **Could not launch Chromium:** run `designteam install-browser`.
+- **Node, npm or npx not found:** open a new terminal after installing Node.js.
+  `npx --yes github:SATRUDE/Designteam#main --help` lists the tool commands.
+- **Could not launch Chromium:** repeat the `install-browser` command from step 2.
 - **Output folder already exists / EEXIST:** choose a new `--out` folder. Existing
   captures are never overwritten.
 - **Cookie dismissal failed:** check the selector against the actual page. Do not
@@ -191,9 +180,8 @@ and errors go to stderr. The local viewer binds to `127.0.0.1`, serves only the
 capture images, and does not upload them. Capture only sites you are entitled to
 access.
 
-To update a global installation, repeat the GitHub install command, then run
-`designteam install-browser` if requested. Mac capture has been tested; Windows
-has not yet been verified.
+The GitHub commands target the current main branch; npm may reuse a cached copy.
+Mac capture has been tested; Windows has not yet been verified.
 
 ## Development checks
 

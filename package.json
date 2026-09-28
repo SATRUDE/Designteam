@@ -1,6 +1,6 @@
 {
   "name": "designteam-app",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,16 +9,20 @@
     "build": "npm install --prefix figma-plugin --include=dev && npm run package:figma-plugin && next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "node scripts/postinstall.mjs"
+    "prebuild": "node scripts/postinstall.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@sparticuz/chromium-min": "^141.0.0",
     "cheerio": "^1.0.0",
     "jszip": "^3.10.1",
-    "next": "16.1.6",
+    "next": "16.3.6",
+    "playwright": "^1.49.0",
     "playwright-core": "^1.49.0",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@sparticuz/chromium": "^141.0.0",
@@ -27,9 +31,22 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
-    "playwright": "^1.49.0",
+    "eslint-config-next": "16.3.6",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "description": "Capture websites from a CLI or the optional Designteam dashboard, with Figma-ready output.",
+  "bin": {
+    "designteam": "bin/designteam.mjs"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "files": [
+    "bin/",
+    "lib/core/",
+    "skills/",
+    ".claude-plugin/",
+    "README.md"
+  ]
 }

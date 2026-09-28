@@ -42,7 +42,7 @@ export async function launchBrowser(): Promise<Browser> {
     });
   }
 
-  const { chromium } = await import("playwright");
+  const { chromium } = await import("playwright-core");
   const browser = await chromium.launch({ headless: true });
   return browser as unknown as Browser;
 }

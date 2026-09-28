@@ -1,17 +1,17 @@
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = dirname(__dirname);
 
 async function main() {
   try {
-    console.log("📦 Starting postinstall script...");
+    console.log("📦 Preparing server browser archive...");
 
     const chromiumResolvedPath = import.meta.resolve("@sparticuz/chromium");
-    const chromiumPath = chromiumResolvedPath.replace(/^file:\/\//, "");
+    const chromiumPath = fileURLToPath(chromiumResolvedPath);
     const chromiumDir = dirname(dirname(dirname(chromiumPath)));
     const binDir = join(chromiumDir, "bin");
 
@@ -26,7 +26,8 @@ async function main() {
     const outputPath = join(publicDir, "chromium-pack.tar");
 
     console.log("📦 Creating chromium tar archive...");
-    execSync(`mkdir -p ${publicDir} && tar -cf "${outputPath}" -C "${binDir}" .`, {
+    mkdirSync(publicDir, { recursive: true });
+    execFileSync("tar", ["-cf", outputPath, "-C", binDir, "."], {
       stdio: "inherit",
       cwd: projectRoot,
     });

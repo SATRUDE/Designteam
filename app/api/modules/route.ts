@@ -297,7 +297,7 @@ export async function POST(request: Request) {
       }
 
       const debugSample =
-        result.blocks?.slice?.(0, 3)?.map?.((m: any) => ({
+        result.blocks.slice(0, 3).map((m) => ({
           id: m.id,
           label: m.label,
           yStart: m.yStart,
@@ -324,9 +324,9 @@ export async function POST(request: Request) {
             rootRectTop: result.rootRectTop,
             rootRectHeight: result.height,
             docHeight: result.docHeight,
-            rootTagName: (result as any).rootTagName,
-            candidateCount: (result as any).candidateCount,
-            keptCount: (result as any).keptCount,
+            rootTagName: result.rootTagName,
+            candidateCount: result.candidateCount,
+            keptCount: result.keptCount,
             moduleCount: result.blocks.length,
             sample: debugSample,
           },
@@ -339,7 +339,7 @@ export async function POST(request: Request) {
         {
           url,
           mode,
-          modules: result.blocks.map((m: any) => ({
+          modules: result.blocks.map((m) => ({
             id: m.id,
             label: m.label,
             yStart: m.yStart,
@@ -363,4 +363,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

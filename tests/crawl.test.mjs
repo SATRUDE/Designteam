@@ -10,6 +10,19 @@ let origin;
 
 before(async () => {
   server = createServer((request, response) => {
+    if (request.url === "/slow-menu") {
+      const timer = setTimeout(() => {
+        response.writeHead(200, { "Content-Type": "application/json" });
+        response.end(JSON.stringify({ url: "/products", label: "Products" }));
+      }, 3_000);
+      response.on("close", () => clearTimeout(timer));
+      return;
+    }
+    if (request.url === "/pending") {
+      response.writeHead(200, { "Content-Type": "text/plain" });
+      response.flushHeaders();
+      return;
+    }
     if (request.url === "/redirect") {
       response.writeHead(302, { Location: "/nested/page.html" });
       response.end();
@@ -31,6 +44,28 @@ before(async () => {
         <footer><a href="article#one">Article</a></footer>
         <a href="article#two">Duplicate article</a>
         <a href="/absolute">Absolute</a>
+      `);
+    } else if (request.url === "/async-menu" || request.url === "/async-menu-with-pending") {
+      response.end(`
+        <nav></nav>
+        <script>
+          ${request.url.endsWith("-pending") ? 'fetch("/pending");' : ""}
+          fetch("/slow-menu").then(response => response.json()).then(item => {
+            const link = document.createElement("a");
+            link.href = item.url;
+            link.textContent = item.label;
+            document.querySelector("nav").append(link);
+          });
+        </script>
+      `);
+    } else if (request.url === "/timer-menu") {
+      response.end(`
+        <nav></nav>
+        <script>
+          setTimeout(() => {
+            document.querySelector("nav").innerHTML = '<a href="/products">Products</a>';
+          }, 1_500);
+        </script>
       `);
     } else {
       response.writeHead(404);
@@ -70,6 +105,29 @@ test("respects the document base URL", async () => {
 
 test("rejects non-web URLs before opening a page", async () => {
   await assert.rejects(crawlPage(browser, "file:///tmp/index.html"), TypeError);
+});
+
+test("discovers navigation populated by a slow request", async () => {
+  const result = await crawlPage(browser, `${origin}/async-menu`);
+  assert.deepEqual(result.links, [
+    { url: `${origin}/async-menu`, label: "Homepage" },
+    { url: `${origin}/products`, label: "Products" },
+  ]);
+  assert.equal(browser.contexts().length, 0);
+});
+
+test("preserves the minimum script settlement window on an idle page", async () => {
+  const result = await crawlPage(browser, `${origin}/timer-menu`);
+  assert.ok(result.links.some((link) => link.url === `${origin}/products`));
+});
+
+test("returns discovered links when another request never finishes", { timeout: 12_000 }, async () => {
+  const result = await crawlPage(browser, `${origin}/async-menu-with-pending`);
+  assert.deepEqual(result.links, [
+    { url: `${origin}/async-menu-with-pending`, label: "Homepage" },
+    { url: `${origin}/products`, label: "Products" },
+  ]);
+  assert.equal(browser.contexts().length, 0);
 });
 
 test("rejects HTTP error pages", async () => {

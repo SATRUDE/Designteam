@@ -62,3 +62,22 @@ review branch, not a hosted release or marketplace publication.
   a new network capture endpoint; the new viewer is loopback-only and read-only.
 - Arbitrary external websites can still need site-specific cookie selectors or layout
   handling. A fixture pass does not guarantee every site's screenshot fidelity.
+
+## Second review fixes, 28 September 2026
+
+- Crawling now allows pending requests up to five seconds to settle after its initial
+  two-second script window. A three-second navigation fetch is discovered, while a
+  never-finishing request remains bounded.
+- A supplied cookie selector that cannot be clicked now fails that capture instead
+  of silently saving an obscured screenshot. The CLI records the diagnostic and
+  returns exit 1 for total failure or 2 for partial failure. Successful captures in
+  the same batch are retained.
+- Inner scrolling content and its clipping ancestors are expanded before taking a
+  full-page screenshot. Horizontal clipping is preserved, so wide tables and
+  carousels do not widen mobile output. This is a layout normalisation; virtualised
+  content absent from the DOM still requires site-specific handling.
+- Regression coverage checks delayed navigation, never-finishing requests, successful
+  and failed cookie dismissal, batch exit codes, and visible bottom content at desktop
+  and mobile sizes through direct, flex-nested and horizontally overflowing scrollports.
+- All 18 tests, TypeScript and the production build pass. Lint has zero errors and
+  the same 19 warnings; the changed JavaScript files have no lint warnings.

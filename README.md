@@ -132,6 +132,14 @@ during this implementation; the structure follows his saved advice and the offic
 - Exit codes: `0` complete, `1` invalid input or no successful captures, `2` partial
   capture. Check `warnings` before treating a run as complete.
 - Existing output directories are refused so previous captures cannot be overwritten.
+- A supplied `--cookie` selector must be clicked successfully for each capture.
+  If it cannot be clicked, that capture fails with a diagnostic in the manifest;
+  omit the option for pages without a consent banner.
+- Crawl allows two seconds for scripts, then up to five seconds for pending requests
+  to settle. Sites with continuous network activity still finish within that bound.
+- Internally scrolling content is expanded along with its clipping ancestors before
+  capture. This changes the layout for full-page output; virtualised content that is
+  not present in the DOM still needs site-specific handling.
 - PNG tiles retain their pixel size and order, with maximum dimensions of 4096px and
   10MiB per tile. Excessively wide page overflow is reported, not silently rescaled.
 - The local viewer binds only to `127.0.0.1` and serves the manifest's named PNGs.

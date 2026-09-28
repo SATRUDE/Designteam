@@ -87,3 +87,31 @@ test('dashboard rejects tiles outside the capture folder including symlinks', as
     await assert.rejects(startDashboard(file),/escapes/);
   } finally {await rm(dir,{recursive:true,force:true});}
 });
+
+test('CLI records cookie dismissal failures and returns partial or failed exit codes', { timeout: 30000 }, async () => {
+  const cwd = await mkdtemp(path.join(tmpdir(), 'designteam-cookie-'));
+  const fixture = createServer((req, res) => {
+    const id = req.url === '/working' ? 'accept' : 'different-accept';
+    res.writeHead(200, { 'Content-Type': 'text/html' }).end(`<!doctype html>
+      <style>body{background:lime}#consent{position:fixed;inset:0;background:red}</style>
+      <div id="consent" role="dialog"><button id="${id}" onclick="document.getElementById('consent').remove()">Accept</button></div>`);
+  });
+  fixture.listen(0, '127.0.0.1'); await once(fixture, 'listening');
+  const base = `http://127.0.0.1:${fixture.address().port}`;
+  try {
+    for (const partial of [true, false]) {
+      const urls = partial ? [base + '/working', base + '/broken'] : [base + '/broken'];
+      const result = await run(['capture', ...urls, '--cookie', '#accept', '--out', partial ? './partial' : './failed'], cwd);
+      assert.equal(result.code, partial ? 2 : 1, result.stderr);
+      const manifest = JSON.parse(await readFile(result.stdout.trim(), 'utf8'));
+      assert.equal(manifest.failed, 1);
+      assert.equal(manifest.shots.length, partial ? 1 : 0);
+      assert.equal(manifest.warnings.length, 1);
+      assert.match(manifest.warnings[0], /Cookie dismissal failed/);
+      assert.match(result.stderr, /Cookie dismissal failed/);
+    }
+  } finally {
+    fixture.close(); fixture.closeAllConnections();
+    await rm(cwd, { recursive: true, force: true });
+  }
+});

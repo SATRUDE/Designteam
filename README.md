@@ -1,153 +1,209 @@
-# URL Crawler & Screenshot
+# Designteam
 
-Crawl a URL to discover same-origin links, select which pages to capture, and take screenshots automatically. Built with Next.js and Tailwind CSS.
+Capture website screenshots from your terminal, discover page links, and review
+captures locally. Choose desktop, mobile, or both. Long pages are saved as ordered
+PNG tiles, ready to place in Figma.
 
-Export screenshots as **JSON** for the **Designteam Figma plugin**, which creates a new page with frames and image fills in your file—no Figma OAuth or server-side publishing.
+## Quick start
 
-## Setup
+### 1. Install the tool
 
-1. Install dependencies:
+Install **Node.js 22 or later** (including npm) and **Git**, then open a terminal:
 
-```bash
-npm install
+```sh
+npm install --global github:SATRUDE/Designteam#main
+designteam --version
 ```
 
-2. Install Playwright browsers (required for screenshots):
+The package is installed from GitHub. It is not published to the npm registry, so
+`npm install --global designteam` is not the installation command for this tool.
 
-```bash
-npx playwright install chromium
+### 2. Install the browser once
+
+```sh
+designteam install-browser
 ```
 
-## Run
+This downloads Chromium for screenshot capture. Installation does not start a
+server or capture anything. Run it again after updating the tool if it asks for a
+new browser version.
 
-```bash
-npm run dev
+### 3. Take screenshots
+
+Run this from the folder where you want to save the images:
+
+```sh
+designteam capture https://example.com --modes desktop,mobile --out ./shots/example
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Enter a URL, click **Crawl**, select the links you want, then click **Take screenshots** to capture them.
+Replace `https://example.com` with the website you want. The output folder must
+be new: use a different name for each run. You can run the tool from any folder;
+it does not need a Git repository or a running web app.
 
-### Figma plugin (import into a file)
+- Omit `--modes` for desktop only, or use `--modes mobile` for mobile only.
+- Desktop captures are 1280px wide; mobile captures are 400px wide, unless the page
+  itself has visible horizontal overflow.
+- To capture several pages, list their URLs before the options (up to 20 per run):
 
-**Phase 1 — from this repo (development)**
-
-1. Build the plugin: `npm run build --prefix figma-plugin` (or run a full `npm run build` from the repo root).
-2. In Figma: **Plugins → Development → Import plugin from manifest…** and choose `figma-plugin/manifest.json` in your clone.
-
-**Phase 2 — from the deployed app**
-
-1. On the app home page, use **Download Figma plugin (zip)** (or open `/designteam-figma-plugin.zip` on your deployment).
-2. Unzip the folder. In Figma, **Import plugin from manifest…** and select `manifest.json` inside that folder.
-
-**Export flow**
-
-1. After screenshots are ready, click **Export for Figma plugin**, set options (page name prefix, desktop/mobile, optional slice), then **Download JSON**.
-2. Run the plugin in Figma and import that JSON (file picker or paste).
-
-> **Local dev:** `next dev` does not build the plugin zip. Run `npm run package:figma-plugin` once (or use `npm run build`) so `public/designteam-figma-plugin.zip` exists for the download link.
-
-## Production build
-
-```bash
-npm run build
+```sh
+designteam capture https://example.com https://example.com/about --modes desktop,mobile --out ./shots/example-pages
 ```
 
-This packages the Figma plugin into `public/designteam-figma-plugin.zip`, then runs `next build`.
+Quote URLs that contain query strings, for example `"https://example.com/?page=2"`.
 
-## Learn More
+### 4. Remove a cookie banner when needed
 
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying)
+Cookie banners are not removed automatically. Supply the CSS selector of the
+button that dismisses the banner:
 
-## Deploy on Vercel
+```sh
+designteam capture https://example.com --cookie '#accept-cookies' --out ./shots/example-clean
+```
 
-The easiest way to deploy this app is the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme).
+`#accept-cookies` is only an example: use the actual selector for that site. You
+can find it with your browser's Inspect tool, or ask your coding assistant to find
+it. Every page in that command must have a working matching button. If it cannot
+be clicked, that capture fails and the reason is recorded. Omit `--cookie` on
+pages without a banner; use separate commands for sites with different selectors.
 
-## CLI and Claude Code plugin (distribution branch)
+### 5. Review the images
 
-The CLI and existing web dashboard now share the capture and link-discovery engines
-in `lib/core/`. Neither a running server nor a current Git repository is needed for
-CLI capture. Node 20.9+ is required. This branch is not yet a published release.
+```sh
+designteam dashboard ./shots/example/manifest.json
+```
 
-```bash
-# In a clone of this branch
+Open the local URL printed in the terminal. The viewer shows the screenshots and
+any capture warnings. Keep the terminal running while reviewing; press **Ctrl+C**
+to stop the viewer.
+
+Your output folder contains PNG images and `manifest.json`, which records source
+URLs, capture order, tile dimensions and failures. Tall pages have several numbered
+tiles. Keep their order and stack them vertically without gaps to reconstruct the
+page. Move the manifest and its PNGs together if you move a capture folder.
+
+### 6. Discover more pages
+
+```sh
+designteam crawl https://example.com
+```
+
+This prints a JSON list of links discovered on that page. Choose the URLs you want
+and pass them to `capture`. It does not recursively crawl the whole website or
+capture the discovered pages automatically.
+
+## Use without a global installation
+
+Use these commands instead of installing the global `designteam` command:
+
+```sh
+npx --yes github:SATRUDE/Designteam#main install-browser
+npx --yes github:SATRUDE/Designteam#main capture https://example.com --out ./shots/example
+npx --yes github:SATRUDE/Designteam#main dashboard ./shots/example/manifest.json
+```
+
+The first run downloads the package and its dependencies. Chromium is a separate
+download through `install-browser`. Output still goes into your current folder.
+
+## Use with Claude Code
+
+Clone the repository and install its dependencies and browser:
+
+```sh
+git clone https://github.com/SATRUDE/Designteam.git
+cd Designteam
 npm install
 node bin/designteam.mjs install-browser
-
-# From any folder; use an absolute path to the CLI
-node /path/to/Designteam/bin/designteam.mjs crawl https://example.com
-node /path/to/Designteam/bin/designteam.mjs capture https://example.com \
-  --modes desktop,mobile --out ./shots/example
-node /path/to/Designteam/bin/designteam.mjs dashboard ./shots/example/manifest.json
 ```
 
-`crawl` discovers links on a single page. Choose the URLs you want, then pass them
-to `capture`. `dashboard` is an optional, read-only local capture viewer. The existing
-Next.js dashboard remains available through `npm run dev` for the interactive
-crawl/select/capture workflow. Neither dashboard starts during installation or capture.
+Start Claude Code with the plugin's absolute path, replacing the example path:
 
-### Package and GitHub distribution
-
-```bash
-npm pack
-# Install the resulting .tgz in a separate directory for release testing
-npm install /path/to/designteam-app-0.2.0.tgz
-npx designteam --help
-```
-
-After this branch is made available on GitHub, the corresponding commands are:
-
-```bash
-npx github:SATRUDE/Designteam#codex/cli-plugin-distribution --help
-npx github:SATRUDE/Designteam#codex/cli-plugin-distribution install-browser
-npx github:SATRUDE/Designteam#codex/cli-plugin-distribution capture https://example.com
-```
-
-Output paths are relative to the folder where you run the command. Dependencies
-and bundled instructions are resolved relative to the installation. Chromium is a
-separate, explicit download, not an install-time side effect. The GitHub package
-uses the existing app's dependency set; capture does not start or import Next.js.
-The tarball includes only CLI code, shared core, plugin instructions and README,
-not environment files, saved captures, debug logs or the web app source.
-
-### Claude Code plugin
-
-After installing dependencies in the clone, test the plugin locally:
-
-```bash
+```sh
 claude --plugin-dir /absolute/path/to/Designteam
 ```
 
-Use `/designteam:screenshots` to invoke the capture workflow. The bundled skill
-covers direct capture, discovering links, optional review and Figma placement when
-Figma tools are available. Figma is not needed to save screenshots. No hooks,
-automatic capture, account connection or marketplace installation is configured.
-The reference suggested by Peder, `OXXAS/figma-code-fidelity-plugin`, was inaccessible
-during this implementation; the structure follows his saved advice and the official
-[Claude Code plugin specification](https://code.claude.com/docs/en/plugins-reference).
+Invoke `/designteam:screenshots` and describe what you need, for example:
 
-### Capture contract
+> Capture desktop and mobile screenshots of https://example.com and save them to
+> a new folder called shots/example. Check for cookie banners and report any failures.
 
-- `capture` stdout contains only an absolute `manifest.json` path; `crawl` emits JSON.
-  Progress and errors go to stderr.
-- Exit codes: `0` complete, `1` invalid input or no successful captures, `2` partial
-  capture. Check `warnings` before treating a run as complete.
-- Existing output directories are refused so previous captures cannot be overwritten.
-- A supplied `--cookie` selector must be clicked successfully for each capture.
-  If it cannot be clicked, that capture fails with a diagnostic in the manifest;
-  omit the option for pages without a consent banner.
-- Crawl allows two seconds for scripts, then up to five seconds for pending requests
-  to settle. Sites with continuous network activity still finish within that bound.
-- Internally scrolling content is expanded along with its clipping ancestors before
-  capture. This changes the layout for full-page output; virtualised content that is
-  not present in the DOM still needs site-specific handling.
-- PNG tiles retain their pixel size and order, with maximum dimensions of 4096px and
-  10MiB per tile. Excessively wide page overflow is reported, not silently rescaled.
-- The local viewer binds only to `127.0.0.1` and serves the manifest's named PNGs.
-  Stop it with Ctrl+C. It does not upload files or run a browser capture service.
-- Capture uses a fresh, unauthenticated browser. It does not import browser cookies
-  or credentials. Only capture sites you are entitled to access.
+The plugin includes instructions for discovery, capture, optional local review and
+Figma placement when suitable Figma tools are connected. Figma access is optional
+for taking screenshots. No marketplace installation or automatic runs are configured.
 
-### Verification
+## Put screenshots in Figma
 
-`npm test` runs fixture-based capture, crawl, CLI and local viewer checks.
-`npm run typecheck` checks the Next.js adapters; `npm run lint` checks the codebase.
+For CLI captures, place the PNG files into your Figma file. For a tiled page, use
+the dimensions and order in `manifest.json` and stack the tiles without gaps. A
+coding assistant with suitable Figma tools can do this using the bundled skill.
+
+The CLI manifest is a local capture index, **not** the import JSON expected by the
+separate Designteam Figma plugin. To use that plugin's JSON import workflow, use
+the web app described below.
+
+## Optional web app
+
+In a repository clone, install dependencies and Chromium as above, then run:
+
+```sh
+npm run dev
+```
+
+Open http://localhost:3000. Enter a URL, click **Crawl**, select pages, and click
+**Take screenshots**. This is the interactive capture app; the CLI's `dashboard`
+command is a viewer for captures already saved to disk.
+
+For the Figma import workflow:
+
+1. Run `npm install --prefix figma-plugin --include=dev`, then
+   `npm run package:figma-plugin` in the repository root.
+2. In Figma, choose **Plugins → Development → Import plugin from manifest…** and
+   select `figma-plugin/manifest.json` in your clone. Alternatively, download the
+   plugin zip from the web app and select the manifest after unzipping it.
+3. In the web app, capture screenshots, click **Export for Figma plugin**, choose
+   your options, and download the export JSON.
+4. Run the Designteam Figma plugin and import that JSON.
+
+`npm run build` builds the Figma plugin zip and the production Next.js app.
+
+## Troubleshooting and limits
+
+- **Command not found:** open a new terminal after installing, or use the `npx`
+  commands above. `designteam --help` lists the commands and options.
+- **Could not launch Chromium:** run `designteam install-browser`.
+- **Output folder already exists / EEXIST:** choose a new `--out` folder. Existing
+  captures are never overwritten.
+- **Cookie dismissal failed:** check the selector against the actual page. Do not
+  omit it just to hide the error if a banner is still covering the page.
+- **Some pages failed:** successful captures are retained. Check the manifest's
+  `warnings` and retry failed URLs in a new folder. Exit codes are 0 for complete
+  success, 1 for invalid input or total failure, and 2 for partial capture.
+- **Pages require a login:** captures use a fresh browser with no imported login
+  sessions or credentials.
+- **Unusual page layouts:** inner scrolling content is expanded for full-page
+  capture, which can change layout. Virtualised or infinitely loaded content still
+  needs site-specific handling. `--no-normalize` disables fixed-chrome
+  normalisation, not every layout adjustment.
+- **Very wide pages:** PNG tiles are limited to 4096px per dimension and 10MiB each.
+  Excessive horizontal overflow fails rather than silently shrinking the image.
+
+Capture prints the absolute manifest path to stdout; crawl prints JSON. Progress
+and errors go to stderr. The local viewer binds to `127.0.0.1`, serves only the
+capture images, and does not upload them. Capture only sites you are entitled to
+access.
+
+To update a global installation, repeat the GitHub install command, then run
+`designteam install-browser` if requested. Mac capture has been tested; Windows
+has not yet been verified.
+
+## Development checks
+
+```sh
+npm test
+npm run typecheck
+npm run lint
+npm run build
+```
+
+The CLI and web app share `lib/core/`. The package includes the CLI, shared core,
+plugin instructions and this README; it excludes environment files, saved captures
+and web app source. Use a repository clone to run the web app.
